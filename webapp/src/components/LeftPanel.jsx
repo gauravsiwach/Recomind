@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { FaHeart, FaTimes, FaStar, FaBrain } from 'react-icons/fa';
+import { FaHeart, FaTimes, FaStar, FaBrain, FaSync } from 'react-icons/fa';
 
 const PanelContainer = styled.div`
   background: rgba(255, 255, 255, 0.05);
@@ -12,6 +12,37 @@ const PanelContainer = styled.div`
   font-family: 'Poppins', sans-serif;
   height: calc(100vh - 160px);
   overflow-y: auto;
+`;
+
+const PanelHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+`;
+
+const RefreshButton = styled.button`
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
 const Card = styled.div`
@@ -92,9 +123,16 @@ const SummaryText = styled.p`
   line-height: 1.4;
 `;
 
-const LeftPanel = ({ userMemories }) => {
+const LeftPanel = ({ userMemories, onRefresh, isLoading }) => {
   return (
     <PanelContainer>
+      <PanelHeader>
+        <h2 style={{ color: 'white', margin: 0, fontSize: '1.3rem' }}>User Memories</h2>
+        <RefreshButton onClick={onRefresh} disabled={isLoading}>
+          <FaSync style={{ fontSize: '0.8rem' }} />
+          Refresh
+        </RefreshButton>
+      </PanelHeader>
       <Card>
         <CardHeader>
           <Icon color="#00d4ff"><FaStar /></Icon>
@@ -137,8 +175,7 @@ const LeftPanel = ({ userMemories }) => {
           Memory Summary
         </SummaryTitle>
         <SummaryText>
-          Based on our conversations, you've shown interest in creative activities and relaxing hobbies.
-          You prefer calm environments and have a taste for sophisticated flavors.
+          {userMemories.summary || "No memory summary available yet. Start chatting to build your memory profile!"}
         </SummaryText>
       </MemorySummary>
     </PanelContainer>

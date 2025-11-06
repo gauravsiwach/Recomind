@@ -28,7 +28,8 @@ const RightSection = styled.div`
 `;
 
 function App() {
-  const { getUserMemories, sendMessage, getRecommendations, isLoading } = useRecomindApi();
+  const [userId, setUserId] = useState('gaurav'); // Make user ID configurable
+  const { getUserMemories, sendMessage, getRecommendations, refreshMemories, isLoading } = useRecomindApi(userId);
   const [userMemories, setUserMemories] = useState({ hobbies: [], likes: [], dislikes: [] });
   const [recommendations, setRecommendations] = useState([]);
 
@@ -40,14 +41,24 @@ function App() {
       setRecommendations(recs);
     };
     loadData();
-  }, []);
+  }, [userId]); // Reload data when userId changes
+
+  const handleRefreshMemories = async () => {
+    const memories = await refreshMemories();
+    setUserMemories(memories);
+  };
 
   return (
     <AppContainer>
-      <Header userMemories={userMemories} recommendations={recommendations} />
+      <Header 
+        userMemories={userMemories} 
+        recommendations={recommendations}
+        userId={userId}
+        onUserIdChange={setUserId}
+      />
       <MainContent>
         <LeftSection>
-          <LeftPanel userMemories={userMemories} />
+          <LeftPanel userMemories={userMemories} onRefresh={handleRefreshMemories} isLoading={isLoading} />
         </LeftSection>
         <RightSection>
           <ChatPanel sendMessage={sendMessage} isLoading={isLoading} />

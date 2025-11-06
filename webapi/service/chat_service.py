@@ -50,7 +50,7 @@ mem_client = Memory.from_config(config)
 client = OpenAI()
 conversation_history = []
 
-def chat_service(user_input: str, user_id: str = "gaurav") -> str:
+def chat_service(user_input: str, user_id: str) -> str:
     # 1️⃣ Search memory from Mem0
     relevent_memory = mem_client.search(query=user_input, user_id=user_id)
     memories = [

@@ -42,10 +42,25 @@ const UserName = styled.h2`
   margin: 0;
 `;
 
-const PreferencesSummary = styled.p`
-  font-size: 0.7rem;
-  margin: 3px 0;
-  opacity: 0.8;
+const UserIdInput = styled.input`
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  padding: 3px 8px;
+  color: white;
+  font-size: 0.8rem;
+  margin-top: 5px;
+  width: 120px;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #00d4ff;
+    background: rgba(255, 255, 255, 0.15);
+  }
 `;
 
 const Recommendations = styled.div`
@@ -68,7 +83,7 @@ const RecItem = styled.p`
   opacity: 0.9;
 `;
 
-const Header = ({ userMemories, recommendations }) => {
+const Header = ({ userMemories, recommendations, userId, onUserIdChange }) => {
   const summary = `You enjoy ${userMemories.likes.join(', ')} and dislike ${userMemories.dislikes.join(', ')}.`;
 
   return (
@@ -78,8 +93,14 @@ const Header = ({ userMemories, recommendations }) => {
         <Tagline>Your Smart Memory & Recommendation Assistant</Tagline>
       </LogoSection>
       <UserSection>
-        <UserName>Welcome, Alex!</UserName>
-        <PreferencesSummary>{summary}</PreferencesSummary>
+        <UserName>Welcome, {userId}!</UserName>
+        <UserIdInput
+          type="text"
+          placeholder="Change user ID"
+          value={userId}
+          onChange={(e) => onUserIdChange(e.target.value)}
+        />
+        {/* <PreferencesSummary>{summary}</PreferencesSummary> */}
         <Recommendations>
           <RecTitle>Recommended for you:</RecTitle>
           {recommendations.slice(0, 2).map((rec, index) => (

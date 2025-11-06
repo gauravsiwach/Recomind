@@ -13,30 +13,65 @@ const mockRecommendations = [
   'How about trying a new hiking trail in the nearby mountains this weekend?'
 ];
 
-// Simulate API delay
+// API configuration
+const API_BASE_URL = 'http://localhost:8000';
+
+// Simulate API delay for mock functions
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const useRecomindApi = () => {
+export const useRecomindApi = (userId) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const getUserMemories = async () => {
     setIsLoading(true);
-    await delay(500); // Simulate API call
-    setIsLoading(false);
-    return mockMemories;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/memories?user_id=${userId}`);
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        hobbies: data.hobbies || [],
+        likes: data.likes || [],
+        dislikes: data.dislikes || []
+      };
+    } catch (error) {
+      console.error('Error fetching memories:', error);
+      // Fallback to mock data if API fails
+      return mockMemories;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const sendMessage = async (message) => {
     setIsLoading(true);
-    await delay(1000); // Simulate thinking time
-    setIsLoading(false);
-    // Simple mock response based on message
-    if (message.toLowerCase().includes('hobby')) {
-      return "Based on your hobbies, I recommend exploring more sci-fi literature or learning advanced guitar techniques!";
-    } else if (message.toLowerCase().includes('food')) {
-      return "Since you like Italian cuisine but dislike spicy food, how about trying a creamy carbonara pasta?";
-    } else {
-      return "That's interesting! I'll remember that for future recommendations. What else would you like to chat about?";
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: message,
+          user_id: userId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.reply;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Fallback to mock response if API fails
+      return "Sorry, I'm having trouble connecting to the server right now. Please try again later.";
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -47,10 +82,16 @@ export const useRecomindApi = () => {
     return mockRecommendations;
   };
 
+  const refreshMemories = async () => {
+    // This will trigger a re-fetch of memories
+    return await getUserMemories();
+  };
+
   return {
     getUserMemories,
     sendMessage,
     getRecommendations,
+    refreshMemories,
     isLoading
   };
 };
