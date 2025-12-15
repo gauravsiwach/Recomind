@@ -35,12 +35,14 @@ export const useRecomindApi = (userId) => {
       return {
         hobbies: data.hobbies || [],
         likes: data.likes || [],
-        dislikes: data.dislikes || []
+        dislikes: data.dislikes || [],
+        summary: data.summary || ""
       };
     } catch (error) {
       console.error('Error fetching memories:', error);
       // Fallback to mock data if API fails
-      return mockMemories;
+      //return mockMemories;
+      return {}
     } finally {
       setIsLoading(false);
     }
@@ -77,9 +79,22 @@ export const useRecomindApi = (userId) => {
 
   const getRecommendations = async () => {
     setIsLoading(true);
-    await delay(800);
-    setIsLoading(false);
-    return mockRecommendations;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/recommendations?user_id=${userId}&limit=6`);
+      if (!response.ok) throw new Error(`API call failed: ${response.status}`);
+      const data = await response.json();
+      const recs = data.recommendations || [];
+      // If recs are objects, map to readable strings; otherwise return as-is
+      return recs.map(r => {
+        if (typeof r === 'string') return r;
+        return r.title ? `${r.title} — ${r.explain || r.reason || ''}` : JSON.stringify(r);
+      });
+    } catch (err) {
+      console.error('Error fetching recommendations', err);
+      return mockRecommendations;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const refreshMemories = async () => {

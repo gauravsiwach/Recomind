@@ -84,7 +84,7 @@ const RecItem = styled.p`
 `;
 
 const Header = ({ userMemories, recommendations, userId, onUserIdChange }) => {
-  const summary = `You enjoy ${userMemories.likes.join(', ')} and dislike ${userMemories.dislikes.join(', ')}.`;
+  const summary = `You enjoy ${userMemories?.likes?.join(', ')} and dislike ${userMemories?.dislikes?.join(', ')}.`;
 
   return (
     <HeaderContainer>

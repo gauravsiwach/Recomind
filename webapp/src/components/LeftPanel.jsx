@@ -124,6 +124,7 @@ const SummaryText = styled.p`
 `;
 
 const LeftPanel = ({ userMemories, onRefresh, isLoading }) => {
+  console.log("Rendering LeftPanel with memories:", userMemories);
   return (
     <PanelContainer>
       <PanelHeader>
@@ -139,7 +140,7 @@ const LeftPanel = ({ userMemories, onRefresh, isLoading }) => {
           <CardTitle>Hobbies</CardTitle>
         </CardHeader>
         <ItemList>
-          {userMemories.hobbies.map((hobby, index) => (
+          {userMemories.hobbies?.map((hobby, index) => (
             <Item key={index} color="#00d4ff">{hobby}</Item>
           ))}
         </ItemList>
@@ -151,7 +152,7 @@ const LeftPanel = ({ userMemories, onRefresh, isLoading }) => {
           <CardTitle>Likes</CardTitle>
         </CardHeader>
         <ItemList>
-          {userMemories.likes.map((like, index) => (
+          {userMemories.likes?.map((like, index) => (
             <Item key={index} color="#e94560">{like}</Item>
           ))}
         </ItemList>
@@ -163,7 +164,7 @@ const LeftPanel = ({ userMemories, onRefresh, isLoading }) => {
           <CardTitle>Dislikes</CardTitle>
         </CardHeader>
         <ItemList>
-          {userMemories.dislikes.map((dislike, index) => (
+          {userMemories.dislikes?.map((dislike, index) => (
             <Item key={index} color="#533483">{dislike}</Item>
           ))}
         </ItemList>

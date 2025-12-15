@@ -24,8 +24,8 @@ def get_user_memories(user_id: str):
         memories_text = "\n".join(all_memories)
 
         prompt = f"""
-        Categorize the following user memories into three categories: hobbies, likes, dislikes.
-        Provide the response as a JSON object with keys: "hobbies", "likes", "dislikes". Each key should have a list of relevant memories.
+        Categorize the following user memories into three categories: hobbies, likes, dislikes, summary.
+        Provide the response as a JSON object with keys: "hobbies", "likes", "dislikes" "summary". Each key should have a list of relevant memories.
         Only include memories that clearly fit each category. If a memory doesn't fit well, omit it.
 
         Memories:
@@ -36,12 +36,13 @@ def get_user_memories(user_id: str):
             "hobbies": ["memory1", "memory2"],
             "likes": ["memory3", "memory4"],
             "dislikes": ["memory5"]
+            "summary": "A brief summary of the user's memories."
         }}
         """
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "system", "content": prompt}],
             max_tokens=1000,
             temperature=0.3
         )
@@ -62,13 +63,14 @@ def get_user_memories(user_id: str):
         hobbies = categorized.get("hobbies", [])
         likes = categorized.get("likes", [])
         dislikes = categorized.get("dislikes", [])
+        summary = categorized.get("summary", "")
 
         # Create summary
-        total_memories = len(hobbies) + len(likes) + len(dislikes)
-        summary = f"Total categorized memories: {total_memories}. Hobbies: {len(hobbies)}, Likes: {len(likes)}, Dislikes: {len(dislikes)}."
+        # total_memories = len(hobbies) + len(likes) + len(dislikes)
+        # summary = f"Total categorized memories: {total_memories}. Hobbies: {len(hobbies)}, Likes: {len(likes)}, Dislikes: {len(dislikes)}."
 
         return {
-            "hobbies": hobbies,
+            "hobbies": hobbies, 
             "likes": likes,
             "dislikes": dislikes,
             "summary": summary

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 # Use chat_service from service/chat_service.py
 from service.chat_service import chat_service
 from service.memory_service import get_user_memories
+from service.recommendation_service import get_recommendations
 
 app = FastAPI()
 app.add_middleware(
@@ -17,7 +18,7 @@ app.add_middleware(
 )
 
 
-class ChatRequest(BaseModel):
+class ChatRequest(BaseModel):  
     message: str
     user_id: str
 
@@ -32,5 +33,10 @@ async def chat_endpoint(request: ChatRequest):
 @app.get("/api/memories")
 async def get_memories(user_id: str):
     return get_user_memories(user_id)
+
+
+@app.get("/api/recommendations")
+async def recommendations(user_id: str, limit: int = 6):
+    return get_recommendations(user_id, limit=limit)
 
 #uvicorn main:app --reload

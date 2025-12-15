@@ -46,6 +46,13 @@ function App() {
   const handleRefreshMemories = async () => {
     const memories = await refreshMemories();
     setUserMemories(memories);
+    const loadData = async () => {
+      const memories = await getUserMemories();
+      setUserMemories(memories);
+      const recs = await getRecommendations();
+      setRecommendations(recs);
+    };
+    loadData();
   };
 
   return (
