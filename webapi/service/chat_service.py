@@ -1,12 +1,14 @@
-import os, json
+import os, json, time, threading
 from openai import OpenAI
 from mem0 import Memory
 from dotenv import load_dotenv
-
+import redis
 
 load_dotenv() 
 
+# --- CONFIGURATION ---
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 config = {
     "version": "1.0",
@@ -43,45 +45,82 @@ config = {
 }
 
 mem_client = Memory.from_config(config)
-client = OpenAI()
 
-CACHE_SIZE = 10
-# In-memory per-user chat history (kept while program runs)
-# Structure: { user_id: [ {role: 'user'|'assistant', 'content': '...'}, ... ] }
-in_memory_history = {}
-HISTORY_MAX_LENGTH = 50  # max messages to keep per user
-PAST_TURNS = 6  # number of past turns to include in the prompt
+# --- REDIS SETUP ---
+REDIS_URL = os.getenv("REDIS_URL")
+try:
+    # Set decode_responses=True to handle strings instead of bytes
+    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+    redis_client.ping()
+except:
+    redis_client = None
 
-def append_in_memory(user_id, role, content):
-    if user_id not in in_memory_history:
-        in_memory_history[user_id] = []
-    in_memory_history[user_id].append({"role": role, "content": content})
-    # trim
-    if len(in_memory_history[user_id]) > HISTORY_MAX_LENGTH:
-        in_memory_history[user_id] = in_memory_history[user_id][-HISTORY_MAX_LENGTH:]
+# --- BACKGROUND TASK (NON-BLOCKING) ---
+def background_persistence(user_id, user_input, reply):
+    """Saves to Redis and Mem0 in a separate thread to keep chat fast."""
+    try:
+        # 1. Update Redis History
+        if redis_client:
+            key = f"history:{user_id}"
+            u_entry = json.dumps({"role": "user", "content": user_input})
+            a_entry = json.dumps({"role": "assistant", "content": reply})
+            redis_client.rpush(key, u_entry, a_entry)
+            redis_client.ltrim(key, -20, -1) # Keep last 10 turns
 
+        # 2. Update Mem0 (Extracts facts into Vector + Neo4j)
+        conversation_text = f"User: {user_input}\nAssistant: {reply}"
+        mem_client.add(conversation_text, user_id=user_id)
+    except Exception as e:
+        print(f"Logging Error: {e}")
 
+# --- INTENT ROUTER ---
+def check_if_memory_needed(user_input):
+
+    """Determines if the LLM needs to fetch long-term memories."""
+    check_prompt = f"Does the user message require knowing their past history, preferences, or personal details to answer? Answer ONLY 'YES' or 'NO'.\nUser: {user_input}"
+    res = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": check_prompt}],
+        max_tokens=5
+    )
+    print("memory check for:", user_input, res.choices[0].message.content)
+    return "YES" in res.choices[0].message.content.upper()
+
+# --- MAIN CHAT SERVICE ---
 def chat_service(user_input: str, user_id: str) -> str:
     try:
-        # 1️⃣ Retrieve relevant memories from mem0/vector DB for context
-        search_results = mem_client.search(query=user_input, user_id=user_id)
-        search_memories = [mem.get('memory', '') for mem in search_results.get("results", [])]
-        # Keep only up to CACHE_SIZE most relevant memories
-        memories_text = "\n".join(search_memories[:CACHE_SIZE])
- 
-        SystemPrompt = """You are Recomind, an AI memory assistant you have to act as friendly and try to now user personlity vai asking basic question.
-           and user should not feel that you are trying to find out his personality. start with basic questions like how was your day, what are your name, hobbies etc. 
-           what he do for living etc. how its working style how much he like to socialize etc.
-           what he are his favorite movies, books, music etc.
-           what he do for fun and relaxation.
-           what his favorite food and drink.
-    
-           Example:
-            User: Hi
-            Assistant: Hello! How was your day today?
-            User: It was good.
-            Assistant: That's great to hear! By the way, what's your name?
-            User: My name is John.
+        # 1. Gated Memory Fetch
+        memories_text = ""
+        if check_if_memory_needed(user_input):
+            search_results = mem_client.search(query=user_input, user_id=user_id)
+            search_memories = [mem.get('memory', '') for mem in search_results.get("results", [])]
+            memories_text = "\n".join(search_memories[:10])
+            print(f"Fetched memories for user {user_id}: {memories_text}")
+
+        # 2. Retrieve Short-term History from Redis
+        past_messages = []
+        if redis_client:
+            raw = redis_client.lrange(f"history:{user_id}", -12, -1) # Get last 6 turns
+            past_messages = [json.loads(r) for r in raw]
+
+        # 3. Enhanced System Prompt
+        SystemPrompt = f"""You are Recomind, an AI memory assistant. You are friendly and aim to understand the user's personality naturally.
+        DO NOT make the user feel like you are interviewing them. Start with basic topics: how was their day, name, hobbies, work, and social style.
+        
+        GOALS:
+        - Help with work-life balance.
+        - Remember their favorite movies, books, and food.
+        - Give personalized recommendations based on the 'User Memories' provided below.
+        
+        USER MEMORIES (Use these to personalize your response):
+        {memories_text if memories_text else "No specific memories found yet. Continue getting to know the user."}
+        
+        Example Flow:
+        User: Hi
+        Assistant: Hello! How was your day today?
+        User: It was good.
+        Assistant: That's great to hear! By the way, what's your name?
+        User: My name is John.
             Assistant: Nice to meet you, John! tell me about you, i am here to help you for wokr life balance and make your life more easy and relax.
             User: Sure, I work as a software developer.
             Assistant: That sounds interesting! so hows your work life balance? do you get time for your hobbies and fun activities?
@@ -96,52 +135,22 @@ def chat_service(user_input: str, user_id: str) -> str:
             ....
             ........
             ........
-              Keep the conversation going naturally.
+            ...
+                Keep the conversation flowing naturally.
+             You have access to the user's memories and conversation history.
+            """
 
-           
-           You have access to the user's memories and conversation history.
+        # 4. Generate Response
+        messages = [{"role": "system", "content": SystemPrompt}] + past_messages + [{"role": "user", "content": user_input}]
         
-        """
-
-        content = f"""{SystemPrompt} \n
-         User memories:\n{memories_text} \n
-        """
-
-
-        
-        # 2️⃣ Create context-aware prompt
-        # Include in-memory recent conversation history (if any) before the current user message
-        past_messages = []
-        try:
-            hist = in_memory_history.get(user_id, [])
-            # hist is a list of {role, content}; include only the last PAST_TURNS*2 entries
-            if hist:
-                past_messages = hist[-(PAST_TURNS * 2):] 
-        except Exception:
-            past_messages = []
-
-        messages = [{"role": "system", "content": content}] + past_messages + [{"role": "user", "content": user_input}]
-        # debug logs removed
-
-        # 3️⃣ Get LLM response
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
         )
-        
         reply = response.choices[0].message.content
-        # Append to in-memory history (user + assistant)
-        try:
-            append_in_memory(user_id, 'user', user_input)
-            append_in_memory(user_id, 'assistant', reply)
-        except Exception:
-            pass
-        
-        # 4️⃣ Store the conversation in memory
-        conversation_text = f"User: {user_input}\nAssistant: {reply}"
-        mem_client.add(conversation_text, user_id=user_id)
-        
-        
+
+        # 5. Async Persistence (Non-blocking)
+        threading.Thread(target=background_persistence, args=(user_id, user_input, reply)).start()
         return reply
     
     except Exception as e:

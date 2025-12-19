@@ -1,111 +1,104 @@
-# Recomind
+# Recomind 🧠
 
-An AI-powered memory-based chatbot that learns user hobbies, likes, and dislikes to provide personalized recommendations.
+**Recomind** is an advanced AI-powered memory assistant designed to build a deep, long-term understanding of a user's personality, preferences, and lifestyle. By combining real-time conversation tracking with semantic memory extraction, Recomind provides proactive recommendations for work-life balance, hobbies, and personal growth.
 
-## Features
 
-- Interactive chat interface with modern React UI
-- Memory persistence using Qdrant vector store and Neo4j graph database
-- Personalized recommendations based on user preferences
-- FastAPI backend for scalable API endpoints
-- OpenAI integration for intelligent responses
 
-## Tech Stack
+---
 
-### Frontend
-- React (Vite)
-- Styled Components
-- Modern responsive design
+## 🚀 Key Architectural Features
 
-### Backend
-- FastAPI
-- OpenAI API
-- Mem0 for memory management
-- Qdrant for vector storage
-- Neo4j for graph database
+- **Smart Intent Routing**: A "Gated" logic layer determines if a user's query requires long-term memory retrieval, significantly reducing latency and token costs for general conversation.
+- **Hybrid Memory Layer**:
+    - **Short-Term (Redis)**: Ultra-fast session persistence for immediate context (last 10-20 messages).
+    - **Long-Term (Mem0 + Qdrant)**: Semantic storage of extracted facts and preferences.
+    - **Relationship Mapping (Neo4j)**: Graph-based connections between user entities (e.g., connecting "Inception" to a "Preference for Mind-bending movies").
+- **Asynchronous Persistence**: Leveraging FastAPI's `BackgroundTasks`, the system ensures the user receives a response in milliseconds. Memory extraction and database writes happen in the background after the reply is sent.
+- **Proactive Personality Extraction**: Naturally identifies and saves details like favorite books, work habits, and social energy levels during fluid conversation.
 
-## Setup
+---
 
-### Prerequisites
-- Node.js (for frontend)
-- Python 3.8+ (for backend)
-- OpenAI API key
-- Qdrant instance
-- Neo4j instance
+## 🏗️ Technical Architecture
 
-### Frontend Setup
+| Component | Responsibility | Technology |
+| :--- | :--- | :--- |
+| **API Layer** | Routing & Background Task Orchestration | FastAPI |
+| **Brain** | Intent Classification & Dialogue Generation | OpenAI GPT-4o-mini |
+| **Memory Engine** | Fact Extraction & Entity Linking | Mem0 |
+| **Session Cache** | Fast retrieval of recent chat turns | Redis |
+| **Vector Store** | Semantic search for long-term facts | Qdrant |
+| **Graph Store** | Complex relationship & preference mapping | Neo4j |
 
-1. Navigate to the webapp directory:
-   ```bash
-   cd webapp
-   ```
+---
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+## 📂 Project Structure
 
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-The frontend will be available at `http://localhost:5173`
-
-### Backend Setup
-
-1. Navigate to the webapi directory:
-   ```bash
-   cd webapi
-   ```
-
-2. Create and activate virtual environment:
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate  # On Windows
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Set up environment variables:
-   Create a `.env` file in the `webapi` directory with:
-   ```
-   OPENAI_API_KEY=your_openai_api_key
-   QDRANT_API_KEY=your_qdrant_api_key
-   NEO4J_URI=your_neo4j_uri
-   NEO4J_USER=your_neo4j_username
-   NEO4J_PASSWORD=your_neo4j_password
-   ```
-
-5. Start the FastAPI server:
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-The backend API will be available at `http://localhost:8000`
-
-## API Endpoints
-
-- `POST /chat` - Send a chat message and receive AI response with memory context
-
-## Usage
-
-1. Start both frontend and backend servers
-2. Open the frontend in your browser
-3. Start chatting! The AI will learn from your conversations and provide personalized recommendations
-
-## Project Structure
-
-```
+```text
 Recomind/
-├── webapp/          # React frontend
-├── webapi/          # FastAPI backend
-│   ├── service/     # Business logic
-│   └── main.py      # API endpoints
-├── .gitignore
-└── README.md
-```</content>
-<parameter name="filePath">c:\Gaurav\Learning\Python\AI_Learning\Code\Recomind\README.md
+├── webapp/                # React + Vite Frontend
+│   └── src/               # UI Components & Chat UI
+├── webapi/                # FastAPI Backend
+│   ├── main.py            # API Entry Point & Background Tasks
+│   ├── .env               # Secrets & Configuration
+│   └── service/           # Business Logic Layer
+│       ├── chat_service.py           # Router & LLM Logic
+│       ├── memory_service.py         # Fact Retrieval Logic
+│       └── recommendation_service.py # Graph-based Insights
+├── Dockerfile             # Containerization for Azure Deployment
+└── README.md              # Project Documentation
+```
+
+---
+
+## ⚙️ Setup & Installation
+
+### 1. Prerequisites
+- **Python 3.10+**
+- **Node.js 18+**
+- **Redis** (Official Docker image or Managed Instance)
+- **OpenAI API Key**
+
+### 2. Backend Configuration
+Navigate to the `webapi` directory and create a `.env` file:
+```env
+OPENAI_API_KEY=your_openai_key
+REDIS_URL=redis://default:password@your-redis-ip:6379
+
+QDRANT_URL=your_qdrant_url
+QDRANT_API_KEY=your_qdrant_key
+
+NEO4J_URL=bolt://localhost:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=your_password
+```
+
+### 3. Execution
+
+**Run Backend:**
+```bash
+cd webapi
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+**Run Frontend:**
+```bash
+cd webapp
+npm install
+npm run dev
+```
+
+---
+
+## 🌐 API Endpoints
+
+- **`POST /api/chat`**: Processes input through the Intent Router, fetches context from Redis, and returns an AI response while asynchronously updating memory stores via background tasks.
+- **`GET /api/memories`**: Retrieves a categorized summary of facts the AI has learned about the specific user from the vector store.
+- **`GET /api/recommendations`**: Generates personalized suggestions by querying the Neo4j Knowledge Graph for related user interests.
+
+---
+
+## 🛡️ Security & Deployment
+This project is optimized for seamless deployment via **Azure Container Instances (ACI)** or **Azure Container Apps**.
+* **Secrets Management**: Use Azure Environment Variables or Key Vault to manage sensitive API keys.
+* **Database**: Uses official Redis and Qdrant Docker images for local or cloud-native instances.
